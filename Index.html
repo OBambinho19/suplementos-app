@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Suplementos — Tracker</title>
+<link rel="manifest" href="./manifest.webmanifest">
+
+  <meta name="theme-color" content="#0b0c10" />
+
+  <style>
+    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    body { margin: 0; background:#0b0c10; color:#eaf0f6; }
+    .wrap { max-width: 920px; margin: 0 auto; padding: 18px; }
+    .card { background:#12151c; border:1px solid #1f2633; border-radius: 16px; padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+    h1 { font-size: 18px; margin: 0 0 6px; letter-spacing:.2px; }
+    .muted { color:#9aa7b7; font-size: 13px; }
+    .row { display:flex; gap:10px; flex-wrap: wrap; align-items: center; }
+    input, button, select {
+      background:#0f1218; color:#eaf0f6; border:1px solid #253046; border-radius: 12px;
+      padding: 10px 12px; font-size: 14px;
+    }
+    input { flex: 1; min-width: 220px; }
+    button { cursor:pointer; }
+    button:hover { border-color:#3b4b6b; }
+    .progress { margin-top: 12px; height: 10px; background:#0f1218; border:1px solid #1f2633; border-radius: 999px; overflow:hidden; }
+    .bar { height: 100%; width: 0%; background: #78d7ff; }
+    .footer { margin-top: 10px; display:flex; justify-content: space-between; gap:10px; flex-wrap: wrap; }
+    .danger { border-color:#4a2430; }
+    .danger:hover { border-color:#7a2f44; }
+    .ghost { opacity:.92; }
+    .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color:#9aa7b7; }
+
+    .sectionTitle{
+      margin-top: 14px;
+      margin-bottom: 8px;
+      display:flex; justify-content: space-between; align-items:center; gap:10px; flex-wrap: wrap;
+    }
+    .sectionTitle h2{ font-size: 14px; margin:0; color:#d7e2ee; }
+    .pill { font-size: 12px; color:#9aa7b7; border:1px solid #1f2633; padding: 2px 8px; border-radius: 999px; }
+
+    .grid { display:flex; flex-direction: column; gap:10px; }
+
+    .item {
+      display:flex; align-items:center; justify-content: space-between; gap:10px;
+      background:#0f1218; border:1px solid #1f2633; border-radius: 14px; padding: 10px 12px;
+    }
+    .item.ok { border-color:#1f3b2a; }
+    .left { display:flex; align-items:center; gap:10px; min-width: 0; }
+    .name { font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 420px; }
+    .meta { display:flex; gap:8px; align-items:center; flex-wrap: wrap; }
+    .timeTag{
+      font-size: 12px;
+      color:#8fe0a7;
+      border:1px solid #1f3b2a;
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+    .typeTag{
+      font-size: 12px;
+      color:#ffd38a;
+      border:1px solid #3a2c1b;
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+    .actions { display:flex; gap:8px; }
+    .tiny { padding: 8px 10px; font-size: 12px; border-radius: 12px; }
+    .subtle { color:#9aa7b7; font-size: 12px; }
+
+    .split { display:grid; grid-template-columns: 1fr; gap:14px; margin-top: 14px; }
+    @media (min-width: 900px){
+      .split { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+
+<script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("./sw.js");
+  }
+</script><body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Tracker diario de suplementos</h1>
+      <div class="muted" id="todayLine"></div>
+
+      <div class="progress" aria-label="Progreso del día">
+        <div class="bar" id="bar"></div>
+      </div>
+
+      <div class="footer muted">
+        <div id="summary"></div>
+        <div class="kbd">Se guarda en tu navegador · Reinicio automático cada día</div>
+      </div>
+
+      <hr style="border:none;border-top:1px solid #1f2633;margin:14px 0;">
+
+      <div class="row">
+        <input id="name" placeholder="Ej: Magnesio bisglicinato (2 caps)..." />
+        <select id="when" title="Momento del día">
+          <option value="Mañana">Mañana</option>
+          <option value="Mediodía">Mediodía</option>
+          <option value="Tarde">Tarde</option>
+          <option value="Noche">Noche</option>
+          <option value="Cuando toque">Cuando toque</option>
+        </select>
+
+        <select id="type" title="Tipo">
+          <option value="Diario">Diario</option>
+          <option value="Ocasional">Ocasional</option>
+        </select>
+
+        <button id="add">Añadir</button>
+        <button id="resetDay" class="ghost">Reiniciar marcas (hoy)</button>
+      </div>
+
+      <div class="split">
+        <div>
+          <div class="sectionTitle">
+            <h2>Diarios (cuentan en el progreso)</h2>
+            <span class="pill" id="dailyCount"></span>
+          </div>
+          <div class="grid" id="dailyList"></div>
+        </div>
+
+        <div>
+          <div class="sectionTitle">
+            <h2>Ocasionales (NO cuentan en el progreso)</h2>
+            <span class="pill" id="occasionalCount"></span>
+          </div>
+          <div class="grid" id="occasionalList"></div>
+        </div>
+      </div>
+
+      <hr style="border:none;border-top:1px solid #1f2633;margin:14px 0;">
+
+      <div class="row">
+        <button id="export" class="ghost">Exportar (JSON)</button>
+        <button id="import" class="ghost">Importar (JSON)</button>
+        <button id="wipe" class="danger">Borrar TODO</button>
+      </div>
+
+      <div class="muted" style="margin-top:8px">
+        Exportar/Importar te sirve si cambias de móvil, PC o navegador.
+      </div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const KEY = "suppTracker_v2";
+  const $ = (id) => document.getElementById(id);
+
+  const todayISO = () => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,"0");
+    const day = String(d.getDate()).padStart(2,"0");
+    return `${y}-${m}-${day}`;
+  };
+
+  const nowHHMM = () => {
+    const d = new Date();
+    const hh = String(d.getHours()).padStart(2,"0");
+    const mm = String(d.getMinutes()).padStart(2,"0");
+    return `${hh}:${mm}`;
+  };
+
+  const defaultSupps = [
+    { id: crypto.randomUUID(), name:"Power Cocktail (FitLine)", when:"Mañana", type:"Diario", taken:false, time:null },
+    { id: crypto.randomUUID(), name:"Creatina monohidrato (Creapure)", when:"Mañana", type:"Diario", taken:false, time:null },
+    { id: crypto.randomUUID(), name:"Restorate (FitLine)", when:"Noche", type:"Diario", taken:false, time:null },
+
+    { id: crypto.randomUUID(), name:"Omega-3", when:"Cuando toque", type:"Ocasional", taken:false, time:null },
+    { id: crypto.randomUUID(), name:"Ashwagandha (gominolas)", when:"Cuando toque", type:"Ocasional", taken:false, time:null },
+    { id: crypto.randomUUID(), name:"Zinc", when:"Cuando toque", type:"Ocasional", taken:false, time:null },
+  ];
+
+  function load(){
+    const raw = localStorage.getItem(KEY);
+    if(!raw){
+      const data = { lastDate: todayISO(), items: defaultSupps };
+      localStorage.setItem(KEY, JSON.stringify(data));
+      return data;
+    }
+    try { return JSON.parse(raw); }
+    catch {
+      const data = { lastDate: todayISO(), items: defaultSupps };
+      localStorage.setItem(KEY, JSON.stringify(data));
+      return data;
+    }
+  }
+
+  function save(data){
+    localStorage.setItem(KEY, JSON.stringify(data));
+  }
+
+  function ensureNewDay(data){
+    const t = todayISO();
+    if(data.lastDate !== t){
+      data.items = data.items.map(it => ({...it, taken:false, time:null}));
+      data.lastDate = t;
+      save(data);
+    }
+    return data;
+  }
+
+  function sortItems(items){
+    const order = { "Mañana":1, "Mediodía":2, "Tarde":3, "Noche":4, "Cuando toque":5 };
+    return [...items].sort((a,b)=>{
+      const oa = order[a.when] ?? 9, ob = order[b.when] ?? 9;
+      if(oa !== ob) return oa - ob;
+      return a.name.localeCompare(b.name, "es");
+    });
+  }
+
+  function render(){
+    data = ensureNewDay(data);
+
+    $("todayLine").textContent =
+      `Hoy: ${data.lastDate} · Los diarios cuentan en el % · Los ocasionales NO cuentan.`;
+
+    const daily = sortItems(data.items.filter(i => (i.type || "Diario") === "Diario"));
+    const occasional = sortItems(data.items.filter(i => (i.type || "Diario") === "Ocasional"));
+
+    const dailyTaken = daily.filter(i => i.taken).length;
+    const dailyTotal = daily.length;
+    const pct = dailyTotal ? Math.round((dailyTaken/dailyTotal)*100) : 0;
+
+    $("bar").style.width = pct + "%";
+    $("summary").textContent = `Diarios: ${dailyTaken}/${dailyTotal} (${pct}%) · Ocasionales marcados: ${occasional.filter(i=>i.taken).length}/${occasional.length}`;
+
+    $("dailyCount").textContent = `${daily.length}`;
+    $("occasionalCount").textContent = `${occasional.length}`;
+
+    renderList("dailyList", daily);
+    renderList("occasionalList", occasional);
+  }
+
+  function renderList(targetId, items){
+    const list = $(targetId);
+    list.innerHTML = "";
+
+    if(!items.length){
+      const empty = document.createElement("div");
+      empty.className = "muted";
+      empty.textContent = "Vacío. Añade uno arriba.";
+      list.appendChild(empty);
+      return;
+    }
+
+    items.forEach((it)=>{
+      const row = document.createElement("div");
+      row.className = "item" + (it.taken ? " ok" : "");
+
+      const left = document.createElement("div");
+      left.className = "left";
+
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = !!it.taken;
+
+      cb.addEventListener("change", ()=>{
+        const idx = data.items.findIndex(x=>x.id===it.id);
+        if(idx>=0){
+          data.items[idx].taken = cb.checked;
+          data.items[idx].time = cb.checked ? nowHHMM() : null;
+          save(data);
+          render();
+        }
+      });
+
+      const stack = document.createElement("div");
+      stack.style.display = "flex";
+      stack.style.flexDirection = "column";
+      stack.style.gap = "4px";
+      stack.style.minWidth = "0";
+
+      const name = document.createElement("div");
+      name.className = "name";
+      name.title = it.name;
+      name.textContent = it.name;
+
+      const meta = document.createElement("div");
+      meta.className = "meta";
+
+      const pillWhen = document.createElement("span");
+      pillWhen.className = "pill";
+      pillWhen.textContent = it.when;
+
+      const pillType = document.createElement("span");
+      pillType.className = "typeTag";
+      pillType.textContent = it.type || "Diario";
+
+      meta.appendChild(pillWhen);
+      meta.appendChild(pillType);
+
+      if(it.time){
+        const time = document.createElement("span");
+        time.className = "timeTag";
+        time.textContent = `Tomado ${it.time}`;
+        meta.appendChild(time);
+      }
+
+      stack.appendChild(name);
+      stack.appendChild(meta);
+
+      left.appendChild(cb);
+      left.appendChild(stack);
+
+      const actions = document.createElement("div");
+      actions.className = "actions";
+
+      const edit = document.createElement("button");
+      edit.className = "tiny ghost";
+      edit.textContent = "Editar";
+      edit.addEventListener("click", ()=>{
+        const newName = prompt("Nombre del suplemento:", it.name);
+        if(newName === null) return;
+
+        const newWhen = prompt("Momento (Mañana/Mediodía/Tarde/Noche/Cuando toque):", it.when);
+        if(newWhen === null) return;
+
+        const newType = prompt("Tipo (Diario/Ocasional):", it.type || "Diario");
+        if(newType === null) return;
+
+        const idx = data.items.findIndex(x=>x.id===it.id);
+        if(idx>=0){
+          data.items[idx].name = newName.trim() || it.name;
+          data.items[idx].when = (newWhen.trim() || it.when);
+          data.items[idx].type = (newType.trim() || it.type || "Diario");
+          save(data);
+          render();
+        }
+      });
+
+      const del = document.createElement("button");
+      del.className = "tiny danger";
+      del.textContent = "Borrar";
+      del.addEventListener("click", ()=>{
+        if(!confirm(`¿Borrar "${it.name}"?`)) return;
+        data.items = data.items.filter(x=>x.id!==it.id);
+        save(data);
+        render();
+      });
+
+      actions.appendChild(edit);
+      actions.appendChild(del);
+
+      row.appendChild(left);
+      row.appendChild(actions);
+      list.appendChild(row);
+    });
+  }
+
+  let data = load();
+  data = ensureNewDay(data);
+
+  $("add").addEventListener("click", ()=>{
+    const name = $("name").value.trim();
+    const when = $("when").value;
+    const type = $("type").value;
+
+    if(!name) return alert("Escribe el nombre del suplemento.");
+
+    data.items.push({
+      id: crypto.randomUUID(),
+      name,
+      when,
+      type,
+      taken:false,
+      time:null
+    });
+
+    $("name").value = "";
+    save(data);
+    render();
+  });
+
+  $("name").addEventListener("keydown", (e)=>{
+    if(e.key === "Enter") $("add").click();
+  });
+
+  $("resetDay").addEventListener("click", ()=>{
+    if(!confirm("¿Reiniciar las marcas de HOY (dejar todo como no tomado)?")) return;
+    data.items = data.items.map(it => ({...it, taken:false, time:null}));
+    save(data);
+    render();
+  });
+
+  $("export").addEventListener("click", ()=>{
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type:"application/json"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `suplementos_${data.lastDate}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  $("import").addEventListener("click", ()=>{
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "application/json";
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if(!file) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        try{
+          const incoming = JSON.parse(String(reader.result));
+          if(!incoming || !Array.isArray(incoming.items)) throw new Error("Formato inválido.");
+
+          data = incoming;
+
+          data.lastDate = data.lastDate || todayISO();
+          data.items = data.items.map(it => ({
+            id: it.id || crypto.randomUUID(),
+            name: String(it.name || "").trim() || "Suplemento",
+            when: it.when || "Cuando toque",
+            type: (it.type === "Ocasional" ? "Ocasional" : "Diario"),
+            taken: !!it.taken,
+            time: it.time || null
+          }));
+
+          save(data);
+          render();
+        } catch(err){
+          alert("No se pudo importar ese JSON. " + err.message);
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  });
+
+  $("wipe").addEventListener("click", ()=>{
+    if(!confirm("Esto borra lista y marcas. ¿Seguro?")) return;
+    localStorage.removeItem(KEY);
+    data = load();
+    render();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
